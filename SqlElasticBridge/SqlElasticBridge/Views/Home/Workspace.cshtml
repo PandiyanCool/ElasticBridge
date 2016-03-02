@@ -1,0 +1,22 @@
+﻿
+@{
+    ViewBag.Title = "Workspace";
+}
+
+<h2>Workspace</h2>
+
+<div id="editor">
+  function boom(items) {
+    var x = "Here we go";
+    return x;
+  }
+</div>
+
+<script src="~/Scripts/ace/src/ace.js" type="text/javascript" charset="utf-8"></script>
+
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/solarized_dark");
+    editor.getSession().setMode("ace/mode/javascript");
+    editor.insert("  // Something cool");
+</script>
