@@ -7,8 +7,19 @@ var elasticEditor = ace.edit("elasticEditor");
 elasticEditor.setTheme("ace/theme/solarized_dark");
 elasticEditor.getSession().setMode("ace/mode/json");
 
+// Method to read the sql queries and return converted Elastic queries
 function sqlProcessor() {
 	var sqlReader = $('#sqlEditor > div.ace_scroller').text();
+	var elasticData = sqlParser(sqlReader);
+	elasticEditor.insert(elasticData);
+}
+
+// Parser to parse the sql queries
+function sqlParser(sqlReader)
+{
+	var inputText = sqlReader.replace(/(\r\n|\n|\r)/gm, "").replace(/\s+/g, ' ').trim();
+
+	var select, columns, sqlFunctions, table, whereFilter, groupBy, orderBy;
 	
-	elasticEditor.insert(sqlReader);
+	return inputText;
 }
