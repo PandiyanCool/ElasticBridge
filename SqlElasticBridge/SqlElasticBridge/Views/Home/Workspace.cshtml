@@ -1,22 +1,27 @@
-﻿
-@{
+﻿@{
     ViewBag.Title = "Workspace";
 }
 
 <h2>Workspace</h2>
 
-<div id="editor">
-  function boom(items) {
-    var x = "Here we go";
-    return x;
-  }
-</div>
+<table>
+    <tr>
+        <td>
+            <div id="sqlEditor">select name 
+            from userprofile</div>
+        </td>
+        <td style="align-content:space-around"><button class="btn btn-primary" type="button" id="convert" onclick="sqlProcessor()">Convert>></button></td>
+        <td>
+            <div id="elasticEditor"></div>
+        </td>
+    </tr>
+</table>
 
 <script src="~/Scripts/ace/src/ace.js" type="text/javascript" charset="utf-8"></script>
 
+
 <script>
-    var editor = ace.edit("editor");
-    editor.setTheme("ace/theme/solarized_dark");
-    editor.getSession().setMode("ace/mode/javascript");
-    editor.insert("  // Something cool");
+   
 </script>
+
+<script src="~/Scripts/LanguageProcessor/SqlProcessor.js" type="text/javascript" charset="utf-8"></script>
