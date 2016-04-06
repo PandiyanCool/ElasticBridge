@@ -1,4 +1,4 @@
-﻿
+﻿// Sql Processor
 var sqlEditor = ace.edit("sqlEditor");
 sqlEditor.setTheme("ace/theme/solarized_dark");
 sqlEditor.getSession().setMode("ace/mode/sql");
@@ -15,11 +15,17 @@ function sqlProcessor() {
 }
 
 // Parser to parse the sql queries
-function sqlParser(sqlReader)
-{
+function sqlParser(sqlReader) {
+
 	var inputText = sqlReader.replace(/(\r\n|\n|\r)/gm, "").replace(/\s+/g, ' ').trim();
 
-	var select, columns, sqlFunctions, table, whereFilter, groupBy, orderBy;
-	
-	return inputText;
+	var select, sqlFunctions, table, whereFilter, groupBy, orderBy;
+
+	var columnRegex = /.*select\s+(.*)\s+from.*/;
+
+	var columns = inputText.replace(columnRegex, "$1");
+
+	return columns;
 }
+
+
