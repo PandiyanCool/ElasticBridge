@@ -1,17 +1,42 @@
 ﻿// Sql Processor
 var sqlEditor = ace.edit("sqlEditor");
-sqlEditor.setTheme("ace/theme/solarized_dark");
+sqlEditor.setTheme("ace/theme/sqlserver");
 sqlEditor.getSession().setMode("ace/mode/sql");
+sqlEditor.getSession().setUseWrapMode(true);
 
 var elasticEditor = ace.edit("elasticEditor");
 elasticEditor.setTheme("ace/theme/solarized_dark");
 elasticEditor.getSession().setMode("ace/mode/json");
+elasticEditor.setReadOnly(true);
 
-// Method to read the sql queries and return converted Elastic queries
+function clearInput() {
+	sqlEditor.setValue('');
+	elasticEditor.setValue('');
+}
+
+// Method to read the sql queries and return converted Elasticsearch queries
 function sqlProcessor() {
 	var sqlReader = $('#sqlEditor > div.ace_scroller').text();
+
+	if (sqlReader === "" || sqlReader.indexOf(' join ')>0) {
+		$("#AlertBox").fadeIn();
+
+		window.setTimeout(function () {
+			$("#AlertBox").fadeOut(3000);
+		}, 3000);
+
+		var error = sqlReader === "" ? $('#AlertBox').text('Please provide valid sql queries.')
+			: $('#AlertBox').text('This relational query is not supportted.');
+
+		console.log($('#AlertBox').val());
+
+		return true;
+	}
+
 	var elasticData = sqlParser(sqlReader);
 	elasticEditor.insert(elasticData);
+
+	return true;
 }
 
 // Parser to parse the sql queries
@@ -19,26 +44,47 @@ function sqlParser(sqlReader) {
 
 	var select = '', table = '', whereFilter = '', groupBy = '', orderBy = '';
 
-	var inputText = sqlReader.replace(/(\r\n|\n|\r)/gm, "").replace(/\s+/g, ' ').trim();
+	var inputText = sqlReader.replace(/(\r\n|\n|\r)/gm, "").replace(/\s+/g, ' ').trim().toLowerCase();
+
+	var columnRegex = /.*select\s+(.*)\s+from.*/;
+	select = inputText.replace(columnRegex, "$1").split(',');
+
+	var tableRegex = /(.*from\s+)(.*)/;
+	table = inputText.replace(tableRegex, "$2").split(' ')[0];
 
 	var sqlQuery = inputText.toLowerCase().split(/select|from|where|group by|order by/);
 
-	select = sqlQuery[1] ? sqlQuery[1].replace(/\n| /g, '').split(',') : "";
-	table = sqlQuery[2] ? sqlQuery[2].replace(/\n| /g, '').split(',') : "";
-	whereFilter = sqlQuery[3] ? sqlQuery[3].replace(/\n/g, '').split('and ') : "";
-	groupBy = sqlQuery[4] ? sqlQuery[4].replace(/\n| /g, '').split(',') : "";
-	orderBy = sqlQuery[5] ? sqlQuery[5].replace(/\n| /g, '').split(',') : "";
-	console.log(select, table, whereFilter, groupBy, orderBy);
+	if (inputText.indexOf('where') > 0 && inputText.indexOf('group by') > 0 && inputText.indexOf('order by') > 0) {
+		whereFilter = sqlQuery[3] ? sqlQuery[3].replace(/\n/g, '').split('and ') : "";
+		groupBy = sqlQuery[4] ? sqlQuery[4].replace(/\n| /g, '').split(',') : "";
+		orderBy = sqlQuery[5] ? sqlQuery[5].replace(/\n| /g, '').split(',') : "";
+	}
+
+	else if (inputText.indexOf('group by') > 0 && inputText.indexOf('order by')>0) {
+		groupBy = sqlQuery[3] ? sqlQuery[3].replace(/\n| /g, '').split(',') : "";
+		orderBy = sqlQuery[4] ? sqlQuery[4].replace(/\n| /g, '').split(',') : "";
+	}
+
+	else if (inputText.indexOf('where') > 0 && inputText.indexOf('group by') > 0) {
+		whereFilter = sqlQuery[3] ? sqlQuery[3].replace(/\n/g, '').split('and ') : "";
+		groupBy = sqlQuery[4] ? sqlQuery[4].replace(/\n| /g, '').split(',') : "";
+	}
+
+	else {
+		whereFilter = sqlQuery[3] ? sqlQuery[3].replace(/\n/g, '').split('and ') : "";
+		groupBy = sqlQuery[4] ? sqlQuery[4].replace(/\n| /g, '').split(',') : "";
+		orderBy = sqlQuery[5] ? sqlQuery[5].replace(/\n| /g, '').split(',') : "";
+	}
 
 	// aggregating the sql function
 
 	var functionSelect = [];
 	var i;
 	for (i = 0; i < select.length; i++) {
-		var m = select[i].match(/sum\(|avg\(|min\(|max\(/g);
-		if (m) {
-			functionSelect.push(m[0].replace(/\(/, ''));
-			functionSelect.push(select[i].replace(m[0], '').replace(')', ''));
+		var matcher = select[i].match(/sum\(|avg\(|min\(|max\(/g);
+		if (matcher) {
+			functionSelect.push(matcher[0].replace(/\(/, ''));
+			functionSelect.push(select[i].replace(matcher[0], '').replace(')', ''));
 		}
 	}
 
@@ -53,6 +99,7 @@ function sqlParser(sqlReader) {
 	var elasticSearchQuery = aggregationFormation(whereOject(filters, groupbyObject(groupBy, sqlFunctionObject(functionSelect))));
 
 	return JSON.stringify(elasticSearchQuery, null, '\t');
+
 }
 
 // formation of outer most object
@@ -85,7 +132,7 @@ var whereOject = function (array, object) {
 			termWhereData = whereData[0].replace(/ /g, '');
 			term[termWhereData] = whereData[1].replace(/\\|\'| /g, '');
 			if (whereData.length === 2) {
-				whereField = 'where_' + termWhereData + '_' + term[termWhereData];
+				whereField = 'filter_' + term[termWhereData];
 				objectData[whereField] = { "filter": { "term": term }, "aggs": object };
 			}
 			else {
@@ -94,7 +141,7 @@ var whereOject = function (array, object) {
 					termsArray.push(whereData[t + 1].replace(/ /g, '')); // purposefully not removing quotes here
 				}
 				terms[termWhereData] = termsArray;
-				whereField = 'where_' + termWhereData + '_multiple';
+				whereField = 'filter_' + termWhereData + '_multiple';
 				objectData[whereField] = { "filter": { "terms": terms }, "aggs": object };
 			}
 			return objectData;
@@ -107,7 +154,7 @@ var whereOject = function (array, object) {
 			termWhereData = whereData[0].replace(/ /g, '');
 			term[termWhereData] = whereData[1].replace(/\\|\'| /g, '');
 			if (whereData.length === 2) {
-				whereField = 'where_' + termWhereData + '_' + term[termWhereData];
+				whereField = 'filter_' + termWhereData + '_' + term[termWhereData];
 				aggregation[whereField] = { "filter": { "term": term }, "aggs": whereOject(whereArray, object) };
 			}
 			else {
@@ -116,7 +163,7 @@ var whereOject = function (array, object) {
 					termsArray.push(whereData[t + 1].replace(/ /g, ''));
 				};
 				terms[termWhereData] = termsArray;
-				whereField = 'where_' + termWhereData + '_multiple';
+				whereField = 'filter_' + termWhereData + '_multiple';
 				aggregation[whereField] = { "filter": { "terms": terms }, "aggs": whereOject(whereArray, object) };
 			}
 			return aggregation;
@@ -135,14 +182,14 @@ var groupbyObject = function (array, object) {
 		var groupByName;
 		if (groupArray.length === 1) {
 			var obj = {};
-			groupByName = 'group_by_' + groupArray[0];
+			groupByName = 'agg_' + groupArray[0];
 			obj[groupByName] = { "terms": { "field": groupArray[0] }, "aggs": object };
 			return obj;
 		}
 		else {
 			var aggs = {};
 			var groupByField = groupArray.shift();
-			groupByName = 'group_by_' + groupByField;
+			groupByName = 'agg_' + groupByField;
 			aggs[groupByName] = { "terms": { "field": groupByField }, "aggs": groupbyObject(groupArray, object) };
 			return aggs;
 		}
@@ -157,13 +204,4 @@ var sqlFunctionObject = function (functionSelect) {
 	wrapper[functionSelect[0] + '_' + functionSelect[1]] = functionSelectObject;
 	return wrapper;
 }
-
-
-
-
-
-
-
-
-
 
