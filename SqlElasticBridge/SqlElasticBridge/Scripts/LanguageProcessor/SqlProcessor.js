@@ -25,6 +25,7 @@ function sqlProcessor() {
 			$("#AlertBox").fadeOut(3000);
 		}, 3000);
 
+// ReSharper disable once UnusedLocals
 		var error = sqlReader === "" ? $('#AlertBox').text('Please provide valid sql queries.')
 			: $('#AlertBox').text('This relational query is not supportted.');
 
@@ -138,7 +139,7 @@ var whereOject = function (array, object) {
 			else {
 				termsArray = [];
 				for (t = 0; t < whereData.length - 1; t++) {
-					termsArray.push(whereData[t + 1].replace(/ /g, '')); // purposefully not removing quotes here
+					termsArray.push(whereData[t + 1].replace(/ /g, ''));
 				}
 				terms[termWhereData] = termsArray;
 				whereField = 'filter_' + termWhereData + '_multiple';
