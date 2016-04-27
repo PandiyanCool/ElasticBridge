@@ -35,7 +35,7 @@ function sqlProcessor() {
 	}
 
 	var elasticData = sqlParser(sqlReader);
-	elasticEditor.insert(elasticData);
+	elasticEditor.setValue(elasticData);
 
 	return true;
 }
@@ -77,6 +77,12 @@ function sqlParser(sqlReader) {
 		orderBy = sqlQuery[5] ? sqlQuery[5].replace(/\n| /g, '').split(',') : "";
 	}
 
+
+	//fields included
+
+	var fieldSelect = [];
+	
+
 	// aggregating the sql function
 
 	var functionSelect = [];
@@ -86,6 +92,9 @@ function sqlParser(sqlReader) {
 		if (matcher) {
 			functionSelect.push(matcher[0].replace(/\(/, ''));
 			functionSelect.push(select[i].replace(matcher[0], '').replace(')', ''));
+		}
+		else {
+			fieldSelect.push(select[i]);
 		}
 	}
 
@@ -97,7 +106,7 @@ function sqlParser(sqlReader) {
 
 	// creating elasticsearch query object
 
-	var elasticSearchQuery = aggregationFormation(whereOject(filters, groupbyObject(groupBy, sqlFunctionObject(functionSelect))));
+	var elasticSearchQuery = aggregationFormation(fieldSelect,whereOject(filters, groupbyObject(groupBy, sqlFunctionObject(functionSelect))));
 
 	return JSON.stringify(elasticSearchQuery, null, '\t');
 
@@ -105,8 +114,9 @@ function sqlParser(sqlReader) {
 
 // formation of outer most object
 
-var aggregationFormation = function (object) {
+var aggregationFormation = function (fieldSelect,object) {
 	var aggregationObject = {};
+	aggregationObject['fields'] = fieldSelect;
 	aggregationObject['aggs'] = object;
 	return aggregationObject;
 }
@@ -134,7 +144,7 @@ var whereOject = function (array, object) {
 			term[termWhereData] = whereData[1].replace(/\\|\'| /g, '');
 			if (whereData.length === 2) {
 				whereField = 'filter_' + term[termWhereData];
-				objectData[whereField] = { "filter": { "term": term }, "aggs": object };
+				objectData[whereField] = object === '' ? { "filter": { "term": term } } : { "filter": { "term": term }, "aggs": object };
 			}
 			else {
 				termsArray = [];
@@ -143,7 +153,7 @@ var whereOject = function (array, object) {
 				}
 				terms[termWhereData] = termsArray;
 				whereField = 'filter_' + termWhereData + '_multiple';
-				objectData[whereField] = { "filter": { "terms": terms }, "aggs": object };
+				objectData[whereField] = object === '' ? { "filter": { "terms": terms }} : { "filter": { "terms": terms }, "aggs": object };
 			}
 			return objectData;
 		}
@@ -156,7 +166,7 @@ var whereOject = function (array, object) {
 			term[termWhereData] = whereData[1].replace(/\\|\'| /g, '');
 			if (whereData.length === 2) {
 				whereField = 'filter_' + termWhereData + '_' + term[termWhereData];
-				aggregation[whereField] = { "filter": { "term": term }, "aggs": whereOject(whereArray, object) };
+				aggregation[whereField] = object === '' ? { "filter": { "term": term }} : { "filter": { "term": term }, "aggs": whereOject(whereArray, object) };
 			}
 			else {
 				termsArray = [];
@@ -165,7 +175,7 @@ var whereOject = function (array, object) {
 				};
 				terms[termWhereData] = termsArray;
 				whereField = 'filter_' + termWhereData + '_multiple';
-				aggregation[whereField] = { "filter": { "terms": terms }, "aggs": whereOject(whereArray, object) };
+				aggregation[whereField] = object === '' ? { "filter": { "terms": terms } } :{ "filter": { "terms": terms }, "aggs": whereOject(whereArray, object) };
 			}
 			return aggregation;
 		}
@@ -182,16 +192,18 @@ var groupbyObject = function (array, object) {
 	else {
 		var groupByName;
 		if (groupArray.length === 1) {
-			var obj = {};
-			groupByName = 'agg_' + groupArray[0];
-			obj[groupByName] = { "terms": { "field": groupArray[0] }, "aggs": object };
-			return obj;
+			
+				var obj = {};
+				groupByName = 'agg_' + groupArray[0];
+			obj[groupByName] = object === '' ? { "terms": { "field": groupArray[0] } } : { "terms": { "field": groupArray[0] }, "aggs": object };
+				return obj;
+			
 		}
 		else {
 			var aggs = {};
 			var groupByField = groupArray.shift();
 			groupByName = 'agg_' + groupByField;
-			aggs[groupByName] = { "terms": { "field": groupByField }, "aggs": groupbyObject(groupArray, object) };
+			aggs[groupByName] = object === '' ? { "terms": { "field": groupByField } } : { "terms": { "field": groupByField }, "aggs": groupbyObject(groupArray, object) };
 			return aggs;
 		}
 	}
