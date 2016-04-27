@@ -117,7 +117,7 @@ function sqlParser(sqlReader) {
 var aggregationFormation = function (fieldSelect,object) {
 	var aggregationObject = {};
 	aggregationObject['fields'] = fieldSelect;
-	aggregationObject['aggs'] = object;
+	aggregationObject['aggs'] = object===''?'':object;
 	return aggregationObject;
 }
 
@@ -126,7 +126,7 @@ var aggregationFormation = function (fieldSelect,object) {
 var whereOject = function (array, object) {
 	var whereArray = array.slice(0);
 	if (whereArray.length === 0) {
-		return object;
+		return object===''?'':object;
 	}
 	else {
 		var term;
@@ -212,9 +212,13 @@ var groupbyObject = function (array, object) {
 // formation of select field object
 
 var sqlFunctionObject = function (functionSelect) {
-	var functionSelectObject = {}, wrapper = {};
-	functionSelectObject[functionSelect[0]] = { "field": functionSelect[1] };
-	wrapper[functionSelect[0] + '_' + functionSelect[1]] = functionSelectObject;
-	return wrapper;
+	if (functionSelect != '') {
+		var functionSelectObject = {}, wrapper = {};
+		functionSelectObject[functionSelect[0]] = { "field": functionSelect[1] };
+		wrapper[functionSelect[0] + '_' + functionSelect[1]] = functionSelectObject;
+		return wrapper;
+	} else {
+		return '';
+	}
 }
 
