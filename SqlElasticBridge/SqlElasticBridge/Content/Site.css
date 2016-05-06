@@ -32,3 +32,13 @@ textarea {
 				height: 520px;
 				width: 520px;
     }
+
+#AlertBox {
+	position: absolute;
+	z-index: 1400;
+	top: 4%;
+	right: 4%;
+	margin: 0px auto;
+	text-align: center;
+	display: none;
+}

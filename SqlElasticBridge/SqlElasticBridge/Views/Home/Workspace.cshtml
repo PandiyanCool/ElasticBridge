@@ -3,19 +3,31 @@
 }
 
 <h2>Workspace</h2>
-
-<table>
+<div id="AlertBox" class="alert alert-success" data-alert="alert"></div>
+<table class="table">
+    <thead>
     <tr>
-        <td>
-            <div id="sqlEditor">select name from userprofile</div>
-        </td>
-        <td style="align-content: space-around">
-            <button class="btn btn-primary" type="button" id="convert" onclick=" sqlProcessor() ">Convert>></button>
-        </td>
-        <td>
-            <div id="elasticEditor"></div>
-        </td>
+        <th>SQL query</th>
+        <th></th>
+        <th>Elasticsearch query</th>
     </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+                <div id="sqlEditor">SELECT sum(employerSalary), joinedDate, designation FROM employee where employeeType= 'permanent' GROUP BY joinedDate, designation</div>
+            </td>
+            <td style="align-content: space-around">
+                <button class="btn btn-primary" type="button" onclick=" sqlProcessor() ">Convert <span class="glyphicon glyphicon glyphicon-send" aria-hidden="true"></span></button>
+                <br />
+                <br />
+                <button class="btn btn-info" type="button" onclick=" clearInput() ">Reset <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
+            </td>
+            <td>
+                <div id="elasticEditor"></div>
+            </td>
+        </tr>
+    </tbody>
 </table>
 
 <script src="~/Scripts/ace/src/ace.js" type="text/javascript" charset="utf-8"></script>
